@@ -20,7 +20,7 @@ impl BananaInstances {
             for y in 0..buffers[1] {
                 for z in 0..buffers[2] {
                     offset_binding.set_data(device, [x*num_bananas[0], y*num_bananas[1], z*num_bananas[2]]);
-                    let buffer = StorageTexture3D::from_texture(Texture::blank_texture_3d(device, num_bananas[0]*2, num_bananas[1], num_bananas[2], TextureFormat::Rgba16Float));
+                    let buffer = StorageTexture3D::from_texture(Texture::blank_texture_3d(device, num_bananas[0]*3, num_bananas[1], num_bananas[2], TextureFormat::Rgba32Float));
                     let buffer_binding = UniformBinding::create_bind_group(&buffer, "", &buffer_layout, device);
                     Self::setup_instances(&workgroup_size_binding, &buffer_binding, &buffer_layout, &offset_binding, setup_shader_source, device, queue);
                     buffer_bindings.push(buffer_binding);

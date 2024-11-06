@@ -1,6 +1,6 @@
 @group(0)
 @binding(0)
-var particles: texture_storage_3d<rgba16float, read_write>;
+var particles: texture_storage_3d<rgba32float, read_write>;
 
 @group(1) @binding(0)
 var t_screen: texture_storage_2d<rgba32float, read_write>;
@@ -28,37 +28,36 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     // if (instance.position.x == 0.0 && instance.position.y == 0.0 && instance.position.z == 0.0) {
     //     textureStore(t_screen, global_id.xy, vec4f(0.0, 1.0, 0.0, 1.0));
     // }
-    // let matrix = mat4x4f (
-    //     vec4f(1.0, 0.0, 0.0, 0.0),
-    //     vec4f(0.0, 1.0, 0.0, 0.0),
-    //     vec4f(0.0, 0.0, 1.0, 0.0),
-    //     instance.position
-    // );
     let position = textureLoad(particles, global_id);
+    let new_color = textureLoad(particles, vec3u(global_id.x + global_workgroup_size.x * 2, global_id.yz));
     let clip_position = camera * position;
-    // let dist = distance(instance.position.xyz, camera[3].xyz)*0.1;
     if (clip_position.z > 0.0) {
         let screen_pos = clip_position.xy / clip_position.w;
         if (screen_pos.x >= -1.0 && screen_pos.y >= -1.0 && screen_pos.x <= 1.0 && screen_pos.y <= 1.0) {
             let tex_coords_f = vec2f((screen_pos.x+1.0)/2.0, (screen_pos.y-1.0)/-2.0)*screen_info.screen_size;
             let tex_coords = vec2<u32>(u32(tex_coords_f.x), u32(tex_coords_f.y));
-            // var radius_dist = i32(f32(RADIUS)/dist);
             let radius_dist = RADIUS;
             for (var x = radius_dist*-1; x <= radius_dist; x++) {
                 for (var y = radius_dist*-1; y < radius_dist; y++) {
-                    // let dist_squared = f32(x*x) + f32(y*y);
-                    // if (dist_squared <= RADIUS_2/dist) {
-                        // if (i32(tex_coords.x)-x >= 0 && i32(tex_coords.y)-y >= 0) {
-                            let current = textureLoad(t_screen, vec2<u32>(tex_coords.x+u32(x), tex_coords.y+u32(y)));
-                            if (current.w < 1.0) {
-                                textureStore(t_screen, vec2<u32>(tex_coords.x+u32(x), tex_coords.y+u32(y)), vec4f(1.0, 1.0, 1.0, min(current.w + 0.02, 1.0)));
-                            }
-                        // }
-                    // }
+                    let current = textureLoad(t_screen, vec2<u32>(tex_coords.x+u32(x), tex_coords.y+u32(y)));
+                    if (current.w < 1.0) {
+                        // let new_color = vec4f(position.xyz/1000.0, 0.1);
+                        let color = mix_colors(current, new_color);
+                        textureStore(t_screen, vec2<u32>(tex_coords.x+u32(x), tex_coords.y+u32(y)), color);
+                    }
                 }
             }
         }
     }
+}
+
+fn mix_colors(back: vec4f, front: vec4f) -> vec4f{
+    let pre_back = vec4f(back.rgb * back.a, back.a);
+    let pre_front = vec4f(front.rgb * front.a, front.a);
+    let final_rgb = back.rgb + (front.rgb * (1 - back.a));       
+    let final_a = back.a + (front.a * (1.0 - back.a));
+    return vec4f(final_rgb, final_a);
+
 }
 
 fn quaternion_to_matrix(quat: vec4f) -> mat4x4f {

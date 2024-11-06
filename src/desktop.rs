@@ -10,6 +10,7 @@ mod banana_instance;
 mod sphere;
 mod molecule;
 mod screen_compute;
+mod world_renderer;
 include!(concat!(env!("OUT_DIR"), "/resources.rs"));
 
 #[tokio::main]
