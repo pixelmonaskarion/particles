@@ -98,7 +98,7 @@ impl Game {
         let ground_shader = Shader::new(include_str!("ground.wgsl"), surface_ctx.device(), surface_ctx.config().format, vec![&camera_binding.layout, &delta_time_binding.layout], &[crate::height_map::Vertex::desc(), BananaInstance::desc()], ShaderConfig {line_mode: wgpu::PolygonMode::Fill, ..Default::default() });
         let (sphere_vertices, sphere_indices) = generate_molecule_model(H_ion());
         let sphere_model = Model::new(sphere_vertices, &sphere_indices, surface_ctx.device());
-        let banana_instances_gen = BananaInstances::new([100, 100, 100], [10, 10, 1], include_str!("banana_instances.wgsl"), include_str!("instances_setup.wgsl"), &delta_time_binding.layout, &screen_info_binding.layout, surface_ctx.device(), surface_ctx.queue());
+        let banana_instances_gen = BananaInstances::new([1000, 1000, 1000], [1, 1, 1], include_str!("banana_instances.wgsl"), include_str!("instances_setup.wgsl"), &delta_time_binding.layout, &screen_info_binding.layout, surface_ctx.device(), surface_ctx.queue());
         let post_processing_shader = Shader::new_post_process(include_str!("post_process.wgsl"), surface_ctx.device(), surface_ctx.config().format, &[&create_layout::<StorageTexture>(&surface_ctx.device()), &create_layout::<DepthTexture>(surface_ctx.device()), &create_layout::<Texture>(&surface_ctx.device()), &screen_info_binding.layout, &camera_binding.layout, &camera_inverse_binding.layout]);
         let screen_compute = ScreenCompute::new(&banana_instances_gen, &create_layout::<StorageTexture>(&surface_ctx.device()), &camera_binding.layout, &screen_info_binding.layout, include_str!("screen_compute.wgsl"), surface_ctx.device());
 
@@ -170,7 +170,7 @@ impl WindowHandler for Game {
         render_pass.set_bind_group(1, &self.delta_time_binding.binding, &[]);
         
         self.banana_instances_gen.create_bananas(&self.delta_time_binding.binding, &self.screen_info_binding.binding, &surface_ctx.device(), &surface_ctx.queue());
-        // self.sphere_model.render_instances(render_pass, &self.banana_instances_gen.output_buffers()[0], 0..(self.banana_instances_gen.num_bananas[0]*self.banana_instances_gen.num_bananas[1]*self.banana_instances_gen.num_bananas[2]) as u32 -1);
+        // self.sphere_model.render_instances(render_pass, &self.banana_instances_gen.output_buffers()[0], 0..(self.banana_instances_gen.num_bananas[0]*self.banana_instances_gen.num_bananas[1]*self.banana_instances_gen.num_bananas[2]) -1);
         if (time as f64 + delta / 1000.0) as i32 > time as i32 { 
             self.text_section.text = vec![OwnedText::new((1000.0/delta).to_string()).with_scale(200.0)];
         }
@@ -223,7 +223,7 @@ impl WindowHandler for Game {
     }
     
     fn post_process_render<'s: 'b, 'c: 'b, 'b>(&'s mut self, surface_ctx: &'b dyn SurfaceCtx, render_pass: & mut RenderPass<'b>, surface_texture: &'c UniformBinding<Texture>) {
-        let writable_texture = Texture::blank_texture(surface_ctx.device(), surface_texture.value.texture.width(), surface_texture.value.texture.height(), wgpu::TextureFormat::Rgba16Float);
+        let writable_texture = Texture::blank_texture(surface_ctx.device(), surface_texture.value.texture.width(), surface_texture.value.texture.height(), wgpu::TextureFormat::Rgba32Float);
         let writable_texture_uniform = UniformBinding::new(surface_ctx.device(), "Writable Texture", StorageTexture::from_texture(writable_texture), None);
         self.screen_compute.render_instances(&self.banana_instances_gen, &writable_texture_uniform, &self.camera_binding, &self.screen_info_binding, surface_ctx.device(), surface_ctx.queue());
         self.post_processing_shader.bind(render_pass);

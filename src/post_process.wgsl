@@ -4,7 +4,7 @@ struct ScreenInfo {
 }
 
 @group(0) @binding(0)
-var t_rendered: texture_storage_2d<rgba16float, read_write>;
+var t_rendered: texture_storage_2d<rgba32float, read_write>;
 @group(1) @binding(0)
 var t_depth: texture_depth_2d;
 @group(2) @binding(0)

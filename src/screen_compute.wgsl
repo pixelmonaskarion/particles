@@ -1,15 +1,9 @@
-struct Instance {
-    @location(5) position: vec4<f32>,
-    @location(6) velocity: vec4<f32>,
-};
-
-
 @group(0)
 @binding(0)
-var<storage, read_write> instances: array<Instance>;
+var particles: texture_storage_3d<rgba32float, read_write>;
 
 @group(1) @binding(0)
-var t_screen: texture_storage_2d<rgba16float, read_write>;
+var t_screen: texture_storage_2d<rgba32float, read_write>;
 
 @group(2) @binding(0)
 var<uniform> global_workgroup_size: vec3<u32>;
@@ -28,8 +22,8 @@ const RADIUS_2: f32 = 25.0;
 
 @compute @workgroup_size(1, 1, 1)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
-    let i = global_id.x * global_workgroup_size.y * global_workgroup_size.z + global_id.y * global_workgroup_size.z + global_id.z;
-    let instance = instances[i];
+    // let i = global_id.x * global_workgroup_size.y * global_workgroup_size.z + global_id.y * global_workgroup_size.z + global_id.z;
+    // let instance = instances[i];
     // textureStore(t_screen, global_id.xy, vec4f(instance.position.xyz/100.0, 1.0));
     // if (instance.position.x == 0.0 && instance.position.y == 0.0 && instance.position.z == 0.0) {
     //     textureStore(t_screen, global_id.xy, vec4f(0.0, 1.0, 0.0, 1.0));
@@ -40,7 +34,8 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     //     vec4f(0.0, 0.0, 1.0, 0.0),
     //     instance.position
     // );
-    let clip_position = camera * instance.position;
+    let position = textureLoad(particles, global_id);
+    let clip_position = camera * position;
     // let dist = distance(instance.position.xyz, camera[3].xyz)*0.1;
     if (clip_position.z > 0.0) {
         let screen_pos = clip_position.xy / clip_position.w;
