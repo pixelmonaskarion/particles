@@ -98,7 +98,7 @@ impl Game {
         let ground_shader = Shader::new(include_str!("ground.wgsl"), surface_ctx.device(), surface_ctx.config().format, vec![&camera_binding.layout, &delta_time_binding.layout], &[crate::height_map::Vertex::desc(), BananaInstance::desc()], ShaderConfig {line_mode: wgpu::PolygonMode::Fill, ..Default::default() });
         let (sphere_vertices, sphere_indices) = generate_molecule_model(H_ion());
         let sphere_model = Model::new(sphere_vertices, &sphere_indices, surface_ctx.device());
-        let banana_instances_gen = BananaInstances::new([1000, 1000, 1000], [1, 1, 1], include_str!("banana_instances.wgsl"), include_str!("instances_setup.wgsl"), &delta_time_binding.layout, &screen_info_binding.layout, surface_ctx.device(), surface_ctx.queue());
+        let banana_instances_gen = BananaInstances::new([1000, 1000, 100], [1, 1, 10], include_str!("banana_instances.wgsl"), include_str!("instances_setup.wgsl"), &delta_time_binding.layout, &screen_info_binding.layout, surface_ctx.device(), surface_ctx.queue());
         let post_processing_shader = Shader::new_post_process(include_str!("post_process.wgsl"), surface_ctx.device(), surface_ctx.config().format, &[&create_layout::<StorageTexture>(&surface_ctx.device()), &create_layout::<DepthTexture>(surface_ctx.device()), &create_layout::<Texture>(&surface_ctx.device()), &screen_info_binding.layout, &camera_binding.layout, &camera_inverse_binding.layout]);
         let screen_compute = ScreenCompute::new(&banana_instances_gen, &create_layout::<StorageTexture>(&surface_ctx.device()), &camera_binding.layout, &screen_info_binding.layout, include_str!("screen_compute.wgsl"), surface_ctx.device());
 

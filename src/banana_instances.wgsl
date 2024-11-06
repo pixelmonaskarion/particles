@@ -1,6 +1,6 @@
 @group(0)
 @binding(0)
-var dst_particles: texture_storage_3d<rgba32float, read_write>;
+var dst_particles: texture_storage_3d<rgba16float, read_write>;
 
 @group(1) @binding(0)
 var<uniform> delta_time: f32;

@@ -1,6 +1,6 @@
 @group(0)
 @binding(0)
-var particles: texture_storage_3d<rgba32float, read_write>;
+var particles: texture_storage_3d<rgba16float, read_write>;
 
 @group(1) @binding(0)
 var t_screen: texture_storage_2d<rgba32float, read_write>;
