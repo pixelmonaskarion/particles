@@ -11,7 +11,8 @@ pub struct BananaInstances {
 }
 
 impl BananaInstances {
-    pub fn new(num_bananas: [u32; 3], buffers: [u32; 3], shader_source: &str, setup_shader_source: &str, time_layout: &BindGroupLayout, screen_info_layout: &BindGroupLayout, device: &Device, queue: &Queue) -> Self {
+    pub fn new(num_bananas: [u32; 3], shader_source: &str, setup_shader_source: &str, time_layout: &BindGroupLayout, screen_info_layout: &BindGroupLayout, device: &Device, queue: &Queue) -> Self {
+        let buffers = [1; 3];
         let buffer_layout = create_layout::<StorageTexture3D>(device);
         let workgroup_size_binding = UniformBinding::new(device, "Workgroup Size", num_bananas, None);
         let mut offset_binding = UniformBinding::new(device, "Offset", [0u32,0,0], None);

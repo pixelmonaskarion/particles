@@ -1,7 +1,7 @@
 use bespoke_engine::{binding::UniformBinding, compute::ComputeShader, texture::StorageTexture};
 use wgpu::{BindGroupLayout, Device, Queue};
 
-use crate::instance_compute::BananaInstances;
+use crate::{instance_compute::BananaInstances, world_renderer::WorldRenderer};
 
 pub struct ScreenCompute {
     shader: ComputeShader,
@@ -18,8 +18,9 @@ impl ScreenCompute {
         }
     }
     
-    pub fn render_instances(&mut self, instance_compute: &BananaInstances, screen_texture: &UniformBinding<StorageTexture>, camera: &UniformBinding<[[f32; 4]; 4]>, screen_info: &UniformBinding<[f32; 4]>, device: &Device, queue: &Queue) {
-        let buffer_bindings = &instance_compute.buffer_bindings;
+    pub fn render_instances(&mut self, instance_compute: &BananaInstances, world_renderer: &WorldRenderer, screen_texture: &UniformBinding<StorageTexture>, camera: &UniformBinding<[[f32; 4]; 4]>, screen_info: &UniformBinding<[f32; 4]>, device: &Device, queue: &Queue) {
+        // let buffer_bindings = &instance_compute.buffer_bindings;
+        let world_raster = &world_renderer.sampled_texture_binding;
         let mut encoder = device.create_command_encoder(&Default::default());
         {
             let mut cpass = encoder.begin_compute_pass(&Default::default());
@@ -28,10 +29,11 @@ impl ScreenCompute {
             cpass.set_bind_group(2, Some(&self.workgroup_size_binding.binding), &[]);
             cpass.set_bind_group(3, Some(&camera.binding), &[]);
             cpass.set_bind_group(4, Some(&screen_info.binding), &[]);
-            for i in 0..buffer_bindings.len() {
-                cpass.set_bind_group(0, Some(&buffer_bindings[i]), &[]);
+            // for i in 0..buffer_bindings.len() {
+                // cpass.set_bind_group(0, Some(&buffer_bindings[i]), &[]);
+                cpass.set_bind_group(0, Some(world_raster), &[]);
                 cpass.dispatch_workgroups(instance_compute.num_bananas[0], instance_compute.num_bananas[1], instance_compute.num_bananas[2]);
-            }
+            // }
         }
         queue.submit(Some(encoder.finish()));
         // for buffer in buffer_bindings {
