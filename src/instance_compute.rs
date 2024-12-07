@@ -1,18 +1,20 @@
-use bespoke_engine::{binding::{create_layout, UniformBinding}, compute::ComputeShader, texture::{StorageTexture3D, Texture}};
+use bespoke_engine::{binding::{create_layout, Binding, Uniform, UniformBinding}, compute::ComputeShader, shader::ShaderType, texture::{StorageTexture3D, Texture}};
 use wgpu::{BindGroup, BindGroupLayout, Device, Queue, TextureFormat};
 
 pub struct BananaInstances {
     pub num_bananas: [u32; 3],
     pub buffers: u32,
     pub buffer_layout: BindGroupLayout,
+    pub buffer_type: ShaderType,
     pub buffer_bindings: Vec<BindGroup>,
     shader: ComputeShader,
     pub workgroup_size_binding: UniformBinding<[u32; 3]>,
 }
 
 impl BananaInstances {
-    pub fn new(num_bananas: [u32; 3], buffers: [u32; 3], shader_source: &str, setup_shader_source: &str, time_layout: &BindGroupLayout, screen_info_layout: &BindGroupLayout, device: &Device, queue: &Queue) -> Self {
+    pub fn new(num_bananas: [u32; 3], buffers: [u32; 3], shader_source: &str, setup_shader_source: &str, time_uniform: &dyn Uniform, screen_info_uniform: &dyn Uniform, device: &Device, queue: &Queue) -> Self {
         let buffer_layout = create_layout::<StorageTexture3D>(device);
+        let buffer_type = StorageTexture3D::shader_type();
         let workgroup_size_binding = UniformBinding::new(device, "Workgroup Size", num_bananas, None);
         let mut offset_binding = UniformBinding::new(device, "Offset", [0u32,0,0], None);
         let mut buffer_bindings = vec![];
@@ -31,9 +33,15 @@ impl BananaInstances {
         }
 
         
-        let compute_shader = ComputeShader::new(shader_source, &[&buffer_layout, time_layout, screen_info_layout, &workgroup_size_binding.layout], device);
+        let compute_shader = ComputeShader::new(
+            shader_source, 
+            &[&buffer_layout, time_uniform.layout(), &workgroup_size_binding.layout, screen_info_uniform.layout()], 
+            vec![&buffer_type, time_uniform.shader_type(), &workgroup_size_binding.shader_type, screen_info_uniform.shader_type()],
+            device,
+        );
         Self {
             buffer_layout,
+            buffer_type,
             shader: compute_shader,
             num_bananas,
             buffers: buffers[0]*buffers[1]*buffers[2],
@@ -60,7 +68,12 @@ impl BananaInstances {
     }
 
     fn setup_instances(workgroup_size_binding: &UniformBinding<[u32; 3]>, texture_binding: &BindGroup, buffer_layout: &BindGroupLayout, offset_binding: &UniformBinding<[u32; 3]>, setup_shader_source: &str, device: &Device, queue: &Queue) {
-        let compute_shader = ComputeShader::new(setup_shader_source, &[buffer_layout, &workgroup_size_binding.layout, &offset_binding.layout], device);
+        let compute_shader = ComputeShader::new(
+            setup_shader_source, 
+            &[buffer_layout, &workgroup_size_binding.layout, &offset_binding.layout], 
+            vec![&StorageTexture3D::shader_type(), &workgroup_size_binding.shader_type, &offset_binding.shader_type],
+            device
+        );
         compute_shader.run_once(vec![texture_binding, &workgroup_size_binding.binding, &offset_binding.binding], workgroup_size_binding.value, device, queue);
     }
 }

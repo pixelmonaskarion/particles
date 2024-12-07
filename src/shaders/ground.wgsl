@@ -1,5 +1,5 @@
-@group(0) @binding(0) var<uniform> camera: mat4x4<f32>;
-@group(1) @binding(0) var<uniform> time: f32;
+camera: $0;
+time: $1;
 
 struct VertexInput {
     @location(0) position: vec3<f32>,
@@ -31,7 +31,7 @@ fn vs_main(
         vec4f(0.0, 0.0, 1.0, 0.0),
         instance.position
     );
-    out.clip_position = camera * matrix * vec4<f32>(model.position, 1.0);
+    out.clip_position = camera.view_proj * matrix * vec4<f32>(model.position, 1.0);
     out.color = model.color.xyz;
     out.normal = model.normal;
     return out;

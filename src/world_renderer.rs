@@ -1,4 +1,4 @@
-use bespoke_engine::{binding::UniformBinding, compute::ComputeShader, texture::StorageTexture};
+use bespoke_engine::{binding::{Binding, Uniform, UniformBinding}, compute::ComputeShader, texture::{StorageTexture, StorageTexture3D}};
 use wgpu::{BindGroupLayout, Device, Queue};
 
 use crate::instance_compute::BananaInstances;
@@ -9,9 +9,13 @@ pub struct WorldRenderer {
 }
 
 impl WorldRenderer {
-    pub fn new(instance_compute: &BananaInstances, texture_layout: &BindGroupLayout, camera_layout: &BindGroupLayout, screen_info_layout: &BindGroupLayout, shader_source: &str, device: &Device) -> Self {
+    pub fn new(instance_compute: &BananaInstances, texture_layout: &BindGroupLayout, camera_uniform: &dyn Uniform, screen_info_uniform: &dyn Uniform, shader_source: &str, device: &Device) -> Self {
         let workgroup_size_binding = UniformBinding::new(device, "Workgroup Size", instance_compute.num_bananas, None);
-        let compute_shader = ComputeShader::new(shader_source, &[&instance_compute.buffer_layout, texture_layout, &workgroup_size_binding.layout, camera_layout, &screen_info_layout], device);
+        let compute_shader = ComputeShader::new(
+            shader_source, 
+            &[&instance_compute.buffer_layout, texture_layout, &workgroup_size_binding.layout, camera_uniform.layout(), &screen_info_uniform.layout()], 
+            vec![&instance_compute.buffer_type, &StorageTexture3D::shader_type(), &workgroup_size_binding.shader_type, camera_uniform.shader_type(), screen_info_uniform.shader_type()],
+            device);
         Self {
             shader: compute_shader,
             workgroup_size_binding,

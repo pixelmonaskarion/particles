@@ -1,19 +1,19 @@
 use std::{collections::HashMap, time::{SystemTime, UNIX_EPOCH}, u32};
 
-use bespoke_engine::{binding::{create_layout, Descriptor, UniformBinding}, camera::Camera, model::{Model, Render, ToRaw}, shader::{Shader, ShaderConfig}, surface_context::SurfaceCtx, texture::{DepthTexture, StorageTexture, Texture}, window::{WindowConfig, WindowHandler}};
+use bespoke_engine::{binding::{create_layout, simple_layout_entry, Binding, Descriptor, UniformBinding}, camera::Camera, culling::AABB, model::{Model, Render, ToRaw}, shader::{Shader, ShaderConfig, ShaderType}, surface_context::SurfaceCtx, texture::{DepthTexture, StorageTexture, Texture}, window::{WindowConfig, WindowHandler}};
 use bytemuck::{bytes_of, NoUninit};
 use cgmath::{Vector2, Vector3};
 use wgpu::{Color, Features, Limits, RenderPass};
 use wgpu_text::{glyph_brush::{ab_glyph::FontRef, OwnedSection, OwnedText}, BrushBuilder, TextBrush};
 use winit::{dpi::PhysicalPosition, event::{KeyEvent, TouchPhase}, keyboard::{KeyCode, PhysicalKey::Code}};
-use crate::{banana_instance::BananaInstance, instance_compute::BananaInstances, load_resource, molecule::{generate_molecule_model, H_ion}, screen_compute::ScreenCompute};
+use crate::{banana_instance::BananaInstance, instance_compute::BananaInstances, load_resource, molecule::{generate_molecule_model, Atom, H_ion}, screen_compute::ScreenCompute};
 
 pub struct Game {
-    camera_binding: UniformBinding<[[f32; 4]; 4]>,
+    camera_binding: UniformBinding<Camera>,
     camera_inverse_binding: UniformBinding<[[f32; 4]; 4]>,
     camera: Camera,
     screen_size: [f32; 2],
-    screen_info_binding: UniformBinding<[f32; 4]>,
+    screen_info_binding: UniformBinding<ScreenInfo>,
     delta_time_binding: UniformBinding<f32>,
     start_time: u128,
     keys_down: Vec<KeyCode>,
@@ -80,7 +80,7 @@ impl Game {
     pub fn new(surface_ctx: &dyn SurfaceCtx) -> Self {
         let size = surface_ctx.size();
         let screen_size = [size.0 as f32, size.0 as f32];
-        let screen_info_binding = UniformBinding::new(surface_ctx.device(), "Screen Size", [screen_size[0], screen_size[1], 0.0, 0.0], None);
+        let screen_info_binding = UniformBinding::new(surface_ctx.device(), "Screen Size", ScreenInfo::new(screen_size, 0.0), None);
         let camera = Camera {
             // eye: Vector3::new(20.0, 20.0, 20.0),
             eye: Vector3::new(50.0, 50.0, 50.0),
@@ -91,16 +91,32 @@ impl Game {
             ground: 0.0,
             sky: 0.0,
         };
-        let camera_binding = UniformBinding::new(surface_ctx.device(), "Camera", camera.build_view_projection_matrix_raw(), None);
+        let camera_binding = UniformBinding::new(surface_ctx.device(), "Camera", camera.clone(), None);
         let camera_inverse_binding = UniformBinding::new(surface_ctx.device(), "Camera Inverse", camera.build_inverse_matrix_raw(), None);
         let delta_time_binding = UniformBinding::new(surface_ctx.device(), "Time", 0.0_f32, None);
         let start_time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
-        let ground_shader = Shader::new(include_str!("ground.wgsl"), surface_ctx.device(), surface_ctx.config().format, vec![&camera_binding.layout, &delta_time_binding.layout], &[crate::height_map::Vertex::desc(), BananaInstance::desc()], ShaderConfig {line_mode: wgpu::PolygonMode::Fill, ..Default::default() });
+        let ground_shader = Shader::new_uniform(include_str!("shaders/ground.wgsl"), surface_ctx.device(), vec![surface_ctx.config().format], vec![&camera_binding, &delta_time_binding], &[crate::molecule::Vertex::desc(), BananaInstance::desc()], ShaderConfig {line_mode: wgpu::PolygonMode::Fill, ..Default::default() });
         let (sphere_vertices, sphere_indices) = generate_molecule_model(H_ion());
-        let sphere_model = Model::new(sphere_vertices, &sphere_indices, surface_ctx.device());
-        let banana_instances_gen = BananaInstances::new([100, 100, 100], [1, 1, 1], include_str!("banana_instances.wgsl"), include_str!("instances_setup.wgsl"), &delta_time_binding.layout, &screen_info_binding.layout, surface_ctx.device(), surface_ctx.queue());
-        let post_processing_shader = Shader::new_post_process(include_str!("post_process.wgsl"), surface_ctx.device(), surface_ctx.config().format, &[&create_layout::<StorageTexture>(&surface_ctx.device()), &create_layout::<DepthTexture>(surface_ctx.device()), &create_layout::<Texture>(&surface_ctx.device()), &screen_info_binding.layout, &camera_binding.layout, &camera_inverse_binding.layout]);
-        let screen_compute = ScreenCompute::new(&banana_instances_gen, &create_layout::<StorageTexture>(&surface_ctx.device()), &camera_binding.layout, &screen_info_binding.layout, include_str!("screen_compute.wgsl"), surface_ctx.device());
+        let sphere_model = Model::new(sphere_vertices, &sphere_indices, AABB { dimensions: [Atom::Hydrogen.size(); 3] }, surface_ctx.device());
+        let banana_instances_gen = BananaInstances::new([100, 100, 100], [1, 1, 1], include_str!("shaders/banana_instances.wgsl"), include_str!("shaders/instances_setup.wgsl"), &delta_time_binding, &screen_info_binding, surface_ctx.device(), surface_ctx.queue());
+        let post_processing_shader = Shader::new_post_process(include_str!("shaders/post_process.wgsl"), surface_ctx.device(), surface_ctx.config().format, 
+        vec![
+            &create_layout::<StorageTexture>(&surface_ctx.device()),
+            &create_layout::<DepthTexture>(surface_ctx.device()),
+            &create_layout::<Texture>(&surface_ctx.device()),
+            &screen_info_binding.layout, 
+            &camera_binding.layout, 
+            &camera_inverse_binding.layout],
+            vec![
+                &StorageTexture::shader_type(),
+                &DepthTexture::shader_type(),
+                &Texture::shader_type(),
+                &screen_info_binding.shader_type,
+                &camera_binding.shader_type,
+                &camera_inverse_binding.shader_type
+            ]
+        );
+        let screen_compute = ScreenCompute::new(&banana_instances_gen, &create_layout::<StorageTexture>(&surface_ctx.device()), &camera_binding, &screen_info_binding, include_str!("shaders/screen_compute.wgsl"), surface_ctx.device());
 
         let text_brush = BrushBuilder::using_font_bytes(load_resource("res/ComicSansMS.ttf").unwrap()).unwrap()
             .build(surface_ctx.device(), size.0, size.1, surface_ctx.config().format);
@@ -156,14 +172,14 @@ impl WindowHandler for Game {
             self.camera.eye -= Vector3::unit_y() * speed;
         }
 
-        self.camera_binding.set_data(&surface_ctx.device(), self.camera.build_view_projection_matrix_raw());
+        self.camera_binding.set_data(&surface_ctx.device(), self.camera.clone());
         self.camera_inverse_binding.set_data(&surface_ctx.device(), self.camera.build_inverse_matrix_raw());
 
         render_pass.set_bind_group(0, &self.camera_binding.binding, &[]);
         
         self.delta_time_binding.set_data(&surface_ctx.device(), delta as f32 / 1000.0);
         let time = (SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis()-self.start_time) as f32 / 1000.0;
-        self.screen_info_binding.set_data(&surface_ctx.device(), [self.screen_size[0], self.screen_size[1], time, 0.0]);
+        self.screen_info_binding.set_data(&surface_ctx.device(), ScreenInfo::new(self.screen_size, time));
         
         self.ground_shader.bind(render_pass);
         
@@ -242,6 +258,7 @@ impl WindowHandler for Game {
     fn limits() -> wgpu::Limits {
         Limits {
             max_bind_groups: 7,
+            // max_texture_dimension_3d: 1000
             ..Default::default()
         }
     }
@@ -256,5 +273,44 @@ impl WindowHandler for Game {
 
     fn required_features() -> wgpu::Features {
         Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES
+    }
+
+    fn custom_shader_type_source() -> String {
+        include_str!("shaders/custom_shader_types.wgsl").into()
+    }
+}
+
+#[derive(NoUninit, Clone, Copy)]
+#[repr(C)]
+pub struct ScreenInfo {
+    screen_size: [f32; 2],
+    time: f32,
+    padding: f32,
+}
+
+impl ScreenInfo {
+    pub fn new(screen_size: [f32; 2], time: f32) -> Self {
+        Self {
+            screen_size,
+            time,
+            padding: 0.0,
+        }
+    }
+}
+
+impl Binding for ScreenInfo {
+    fn create_resources<'a>(&'a self) -> Vec<bespoke_engine::binding::Resource> {
+        vec![bespoke_engine::binding::Resource::Simple(bytes_of(self).to_vec())]
+    }
+
+    fn layout(_ty: Option<wgpu::BindingType>) -> Vec<wgpu::BindGroupLayoutEntry> {
+        vec![simple_layout_entry(0)]
+    }
+
+    fn shader_type() -> bespoke_engine::shader::ShaderType {
+        ShaderType {
+            var_types: vec!["<uniform>".into()],
+            wgsl_types: vec!["ScreenInfo".into()]
+        }    
     }
 }

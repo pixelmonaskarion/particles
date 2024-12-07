@@ -2,8 +2,6 @@ use winit::event_loop::EventLoop;
 use runner::common_main;
 
 mod game;
-mod water;
-mod height_map;
 mod runner;
 mod instance_compute;
 mod banana_instance;

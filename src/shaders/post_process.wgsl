@@ -1,20 +1,11 @@
-struct ScreenInfo {
-    screen_size: vec2f,
-    time: f32,
-}
+t_rendered: $0;
+t_depth: $1;
+t_screen: $2,0;
+s_screen: $2,1;
 
-@group(0) @binding(0)
-var t_rendered: texture_storage_2d<rgba32float, read_write>;
-@group(1) @binding(0)
-var t_depth: texture_depth_2d;
-@group(2) @binding(0)
-var t_screen: texture_2d<f32>;
-@group(2) @binding(1)
-var s_screen: sampler;
-
-@group(3) @binding(0) var<uniform> screen_info: ScreenInfo;
-@group(4) @binding(0) var<uniform> camera: mat4x4<f32>;
-@group(5) @binding(0) var<uniform> camera_inverse: mat4x4<f32>;
+screen_info: $3;
+camera: $4;
+camera_inverse: $5;
 
 struct VertexInput {
     @location(0) position: vec3<f32>,

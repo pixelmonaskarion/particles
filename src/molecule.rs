@@ -1,8 +1,62 @@
 use std::f32::consts::PI;
 
+use bespoke_engine::{binding::Descriptor, model::ToRaw};
+use bytemuck::{bytes_of, NoUninit};
 use cgmath::{vec3, Vector3};
 
-use crate::{height_map::Vertex, sphere::{generate_sphere_smooth, generate_sphere_smooth_continued}};
+use crate::sphere::{generate_sphere_smooth, generate_sphere_smooth_continued};
+
+#[repr(C)]
+#[derive(NoUninit, Copy, Clone, Debug)]
+pub struct Vertex {
+    pub position: [f32; 3],
+    pub color: [f32; 3],
+    pub normal: [f32; 3],
+    // pub padding: [f32; 3],
+}
+
+impl Vertex {
+    pub fn pos(&self) -> Vector3<f32> {
+        return Vector3::new(self.position[0], self.position[1], self.position[2]);
+    }
+}
+
+impl Descriptor for Vertex {
+    fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
+        wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &[
+                wgpu::VertexAttribute {
+                    offset: 0,
+                    shader_location: 0,
+                    format: wgpu::VertexFormat::Float32x3,
+                },
+                wgpu::VertexAttribute {
+                    offset: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
+                    shader_location: 1,
+                    format: wgpu::VertexFormat::Float32x3,
+                },
+                wgpu::VertexAttribute {
+                    offset: std::mem::size_of::<[f32; 6]>() as wgpu::BufferAddress,
+                    shader_location: 2,
+                    format: wgpu::VertexFormat::Float32x3,
+                },
+                wgpu::VertexAttribute {
+                    offset: std::mem::size_of::<[f32; 9]>() as wgpu::BufferAddress,
+                    shader_location: 3,
+                    format: wgpu::VertexFormat::Float32x3,
+                },
+            ],
+        }
+    }
+}
+
+impl ToRaw for Vertex {
+    fn to_raw(&self) -> Vec<u8> {
+        bytes_of(self).to_vec()
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum Atom {

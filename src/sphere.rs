@@ -1,6 +1,6 @@
 use std::f32::consts::PI;
 
-use crate::height_map::Vertex;
+use crate::molecule::Vertex;
 
 //https://gist.github.com/Pikachuxxxx/5c4c490a7d7679824e0e18af42918efc
 

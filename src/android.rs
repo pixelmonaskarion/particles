@@ -2,8 +2,6 @@
 use winit::platform::android::activity::AndroidApp;
 
 mod game;
-mod water;
-mod height_map;
 mod runner;
 mod instance_compute;
 mod banana_instance;
